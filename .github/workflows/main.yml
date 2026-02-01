@@ -1,0 +1,44 @@
+name: Build
+
+on:
+  push:
+    branches: [ "main", "master" ]
+    paths:
+      - 'Main.cpp'
+      - 'Makefile'
+      - '.github/workflows/main.yml'
+  pull_request:
+    branches: [ "main", "master" ]
+    paths:
+      - 'Main.cpp'
+      - 'Makefile'
+      - '.github/workflows/main.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Setup Emscripten
+      uses: mymindstorm/setup-emsdk@v14
+      with:
+        # OpenSiv3Dのバージョン推奨に合わせてEmscriptenのバージョンを調整してください
+        version: 3.1.20
+
+    - name: Build
+      run: |
+        emmake make -j$(nproc)
+        mkdir -p docs
+        cp output/index.* docs/
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add docs
+        git commit -m "Update docs" || echo "No changes to commit"
+        git pull origin ${{ github.ref }} --rebase
+        git push origin HEAD:${{ github.ref }}
